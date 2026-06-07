@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Undercover</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════ HOME ═══════════════ -->
+  <div id="view-home" class="view active">
+    <div class="home-bg">
+      <div class="floating-emojis" aria-hidden="true">
+        <span>🕵️</span><span>👀</span><span>🤫</span><span>🎯</span><span>🕵️</span>
+      </div>
+      <div class="home-content">
+        <div class="logo-area">
+          <div class="logo-icon">🕵️</div>
+          <h1 class="logo-title">Undercover</h1>
+          <p class="tagline">Complete your mission.<br>Don't get caught.</p>
+        </div>
+        <div class="home-cta">
+          <button class="btn btn-orange btn-xl" id="btn-go-create">Create Room</button>
+          <button class="btn btn-ghost  btn-xl" id="btn-go-join">Join Room</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ CREATE ═══════════════ -->
+  <div id="view-create" class="view">
+    <div class="screen">
+      <button class="back-btn" id="btn-back-create">← Back</button>
+      <div class="screen-head">
+        <div class="screen-icon">🏠</div>
+        <h2>Create Room</h2>
+        <p>Enter your name to get started</p>
+      </div>
+      <div class="field">
+        <label for="create-name">YOUR NAME</label>
+        <input id="create-name" type="text" placeholder="e.g. Layla" maxlength="20" autocomplete="off" autocorrect="off">
+      </div>
+      <div id="create-error" class="err hidden"></div>
+      <button class="btn btn-orange btn-xl" id="btn-create-room">Create Room 🚀</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ JOIN ═══════════════ -->
+  <div id="view-join" class="view">
+    <div class="screen">
+      <button class="back-btn" id="btn-back-join">← Back</button>
+      <div class="screen-head">
+        <div class="screen-icon">🔑</div>
+        <h2>Join Room</h2>
+        <p>Get the code from your friend</p>
+      </div>
+      <div class="field">
+        <label for="join-name">YOUR NAME</label>
+        <input id="join-name" type="text" placeholder="e.g. Omar" maxlength="20" autocomplete="off" autocorrect="off">
+      </div>
+      <div class="field">
+        <label for="join-code">ROOM CODE</label>
+        <input id="join-code" type="text" placeholder="XXXX" maxlength="4" class="code-input" autocomplete="off" autocapitalize="characters">
+      </div>
+      <div id="join-error" class="err hidden"></div>
+      <button class="btn btn-orange btn-xl" id="btn-join-room">Join Room →</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ LOBBY ═══════════════ -->
+  <div id="view-lobby" class="view">
+    <div class="screen">
+      <!-- Room code chip -->
+      <div class="code-chip-wrap">
+        <span class="code-chip-label">ROOM CODE</span>
+        <button class="code-chip" id="room-code-display">----</button>
+        <span class="code-chip-hint">Tap to copy &amp; share</span>
+      </div>
+
+      <div class="screen-head" style="margin-top:4px">
+        <h2>Waiting Room</h2>
+        <p id="lobby-count">0 players joined</p>
+      </div>
+
+      <div id="player-list" class="player-grid"></div>
+
+      <div id="start-error" class="err hidden"></div>
+
+      <div id="lobby-cta">
+        <button class="btn btn-orange btn-xl hidden" id="btn-start-game">Start Game 🚀</button>
+        <div class="waiting-pill hidden" id="waiting-msg">
+          <div class="dots"><span></span><span></span><span></span></div>
+          Waiting for host to start
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ MISSION ═══════════════ -->
+  <div id="view-mission" class="view">
+    <div class="screen mission-screen">
+
+      <div class="mission-who">
+        <span class="mission-who-label">YOUR MISSION</span>
+        <span id="mission-player-name" class="mission-who-name"></span>
+      </div>
+
+      <!-- 3-D flip card -->
+      <div class="card-scene">
+        <div class="flip-card" id="mission-card">
+          <div class="flip-inner">
+            <!-- FRONT: classified -->
+            <div class="flip-front">
+              <div class="flip-front-glow"></div>
+              <div class="fc-lock">🔒</div>
+              <div class="fc-title">Mission<br>Classified</div>
+              <div class="fc-hint">Tap to reveal</div>
+            </div>
+            <!-- BACK: mission text -->
+            <div class="flip-back">
+              <div class="fb-label">OBJECTIVE</div>
+              <div class="fb-text" id="mission-text"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="mission-actions">
+        <button class="btn btn-orange btn-xl" id="btn-reveal">Tap to Reveal 👁️</button>
+        <button class="btn btn-green  btn-xl hidden" id="btn-complete">Mission Complete ✅</button>
+        <div class="submitted-state hidden" id="submitted-state">
+          <div class="submitted-icon">🎯</div>
+          <div class="submitted-text">Mission Submitted!</div>
+          <div class="submitted-sub">Waiting for results…</div>
+          <div class="submitted-dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+
+      <!-- Agent tracker -->
+      <div class="agent-panel">
+        <div class="agent-panel-title">AGENT STATUS</div>
+        <div id="agent-statuses"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ RESULTS ═══════════════ -->
+  <div id="view-results" class="view view-dark">
+    <div class="results-scroll">
+      <!-- JS fills this entirely -->
+      <div id="results-dynamic"></div>
+      <button class="btn btn-orange btn-xl" id="btn-play-again">Play Again 🕵️</button>
+    </div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- Toast -->
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
