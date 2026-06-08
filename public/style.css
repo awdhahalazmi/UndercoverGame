@@ -98,10 +98,16 @@ body {
   position: relative;
   z-index: 1;
 }
-.screen-head { text-align: center; }
-.screen-icon { font-size: 40px; margin-bottom: 10px; display: block; }
-.screen-head h2 { font-size: 28px; font-weight: 900; margin-bottom: 6px; color: var(--txt); }
-.screen-head p  { font-size: 15px; color: var(--txt-soft); font-weight: 600; }
+.screen-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+}
+.screen-icon { font-size: 40px; line-height: 1; }
+.screen-head h2 { font-size: 28px; font-weight: 900; margin-top: 6px; color: var(--txt); }
+.screen-head p  { font-size: 15px; color: var(--txt-soft); font-weight: 600; margin-top: 2px; }
 
 /* Form card container */
 .form-card {
@@ -253,7 +259,7 @@ body {
 ══════════════════════════════════════════ */
 .dark-view {
   background: linear-gradient(158deg, var(--navy-deep) 0%, var(--navy) 55%, #1a3660 100%);
-  overflow: hidden;
+  /* overflow-x handled by body; bg-blobs has its own overflow:hidden to contain blobs */
 }
 .dot-grid {
   position: absolute;
@@ -440,7 +446,9 @@ body {
   text-align: center;
   font-size: 30px !important;
   font-weight: 900 !important;
-  padding-left: 32px !important;
+  /* compensate trailing letter-spacing so glyphs appear visually centred */
+  padding-left: 30px !important;
+  padding-right: 18px !important;
   border-radius: var(--r-l) !important;
 }
 
@@ -469,11 +477,11 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 48px;
+  gap: 36px;
   width: 100%;
   max-width: 360px;
   margin: 0 auto;
-  padding: 60px 24px;
+  padding: 44px 24px;
   min-height: 100vh;
 }
 
@@ -626,14 +634,15 @@ body {
 .pc-you  { font-size: 11px; font-weight: 800; color: var(--blue); }
 
 /* Lobby CTA */
-#lobby-cta { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+#lobby-cta { display: flex; flex-direction: column; align-items: stretch; gap: 14px; width: 100%; }
 .waiting-pill {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
   background: rgba(29,42,68,.07);
   border: 1px solid rgba(29,42,68,.1);
   border-radius: 30px;
   padding: 12px 20px;
   font-size: 14px; font-weight: 700; color: var(--txt-soft);
+  text-align: center;
 }
 .dots { display: flex; gap: 4px; }
 .dots span {
@@ -786,7 +795,8 @@ body {
 /* Mission actions */
 .mission-actions {
   display: flex; flex-direction: column;
-  align-items: center; gap: 12px;
+  align-items: stretch; gap: 12px;
+  width: 100%;
   animation: fade-up .4s ease .25s both;
 }
 
@@ -863,6 +873,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  /* ensure scroll works — dark-view no longer has overflow:hidden */
+  overflow-y: auto;
 }
 
 /* ── 2-player WINNER screen ── */
