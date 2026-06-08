@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════
-   UNDERCOVER — client
+   UNDERCOVER — client (design-enhancement)
    ═══════════════════════════════════════════ */
 
 // ── Thin WebSocket wrapper (mirrors Socket.IO API) ──────────
@@ -37,8 +37,10 @@ const S = {
 };
 
 // ── Avatar helpers ──────────────────────────────────────────
-const AV_COLORS = ['#E27439','#1D2A44','#78B9D6','#9B59B6','#2ECC71',
-                   '#E74C3C','#F39C12','#1ABC9C','#3498DB','#E91E63'];
+const AV_COLORS = [
+  '#E27439','#1D2A44','#78B9D6','#9B59B6','#2ECC71',
+  '#E74C3C','#F39C12','#1ABC9C','#3498DB','#E91E63',
+];
 function avColor(name) {
   return AV_COLORS[name.split('').reduce((a,c) => a + c.charCodeAt(0), 0) % AV_COLORS.length];
 }
@@ -46,11 +48,25 @@ function avInit(name) {
   return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0,2) || '?';
 }
 
-// ── Navigation ──────────────────────────────────────────────
+// ── Escape HTML ─────────────────────────────────────────────
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ══════════════════════════════════════════════════════════
+// NAVIGATION — with entrance animation
+// ══════════════════════════════════════════════════════════
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(`view-${name}`).classList.add('active');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const next = document.getElementById(`view-${name}`);
+  next.classList.add('active');
+  // Force CSS animation to re-play on every navigation
+  next.style.animation = 'none';
+  void next.offsetHeight; // trigger reflow
+  next.style.animation = '';
+  window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 // ── Toast ───────────────────────────────────────────────────
@@ -59,6 +75,10 @@ function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
   el.classList.remove('hidden');
+  // Restart animation so it always plays fresh
+  el.style.animation = 'none';
+  void el.offsetHeight;
+  el.style.animation = '';
   clearTimeout(_toastTimer);
   _toastTimer = setTimeout(() => el.classList.add('hidden'), 2800);
 }
@@ -90,12 +110,25 @@ function _legacyCopy(text) {
   document.body.removeChild(el);
 }
 
-// ── Escape HTML ─────────────────────────────────────────────
-function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// ══════════════════════════════════════════════════════════
+// BUTTON RIPPLE — delegated to all .btn clicks
+// ══════════════════════════════════════════════════════════
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.btn');
+  if (!btn || btn.disabled) return;
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 2.2;
+  const ripple = document.createElement('span');
+  ripple.className = 'btn-ripple';
+  ripple.style.cssText = [
+    `width:${size}px`,
+    `height:${size}px`,
+    `left:${e.clientX - rect.left - size / 2}px`,
+    `top:${e.clientY - rect.top - size / 2}px`,
+  ].join(';');
+  btn.appendChild(ripple);
+  ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
+}, { passive: true });
 
 // ════════════════════════════════════════════
 // HOME
@@ -146,6 +179,9 @@ document.getElementById('btn-join-room').onclick = () => {
 // ════════════════════════════════════════════
 document.getElementById('room-code-display').onclick = () => {
   copyText(S.roomCode);
+  const chip = document.getElementById('room-code-display');
+  chip.textContent = 'Copied! ✓';
+  setTimeout(() => { chip.textContent = S.roomCode; }, 1400);
   toast('Code copied! 📋');
 };
 document.getElementById('btn-start-game').onclick = () => {
@@ -162,28 +198,72 @@ function renderLobby() {
   document.getElementById('waiting-msg').classList.toggle('hidden', isHost);
 }
 
+// Track which player IDs are already rendered so only new ones bounce in
+const _renderedPids = new Set();
+
 function renderPlayerGrid() {
-  const grid = document.getElementById('player-list');
+  const grid  = document.getElementById('player-list');
   const count = S.players.length;
   document.getElementById('lobby-count').textContent =
-    count === 1 ? '1 player joined' : `${count} players joined`;
+    count === 1 ? '1 player' : `${count} players`;
 
+  // Empty state
   if (!count) {
+    _renderedPids.clear();
     grid.innerHTML = `<div class="empty-state">
       <span class="empty-state-icon">👥</span>
-      <p class="empty-state-text">Waiting for players…</p></div>`;
+      <p class="empty-state-text">Waiting for players…</p>
+    </div>`;
     return;
   }
-  grid.innerHTML = S.players.map(p => {
-    const c = avColor(p.name), i = avInit(p.name);
-    const me = p.id === S.playerId, host = p.id === S.hostId;
-    return `<div class="player-card">
-      <div class="av" style="background:${c}">${i}</div>
-      <div class="pc-name">${esc(p.name)}</div>
-      ${host ? '<div class="pc-host">HOST</div>' : ''}
-      ${me   ? '<div class="pc-you">YOU</div>'   : ''}
-    </div>`;
-  }).join('');
+
+  // Clear empty-state placeholder on first player
+  if (grid.querySelector('.empty-state')) {
+    _renderedPids.clear();
+    grid.innerHTML = '';
+  }
+
+  // Remove cards for players who left
+  Array.from(grid.querySelectorAll('[data-pid]')).forEach(card => {
+    const pid = card.getAttribute('data-pid');
+    if (!S.players.find(p => p.id === pid)) {
+      card.style.animation = 'pop-out .22s ease forwards';
+      setTimeout(() => { card.remove(); _renderedPids.delete(pid); }, 240);
+    }
+  });
+
+  // Add / update player cards
+  S.players.forEach(p => {
+    const existing = Array.from(grid.querySelectorAll('[data-pid]'))
+                          .find(el => el.getAttribute('data-pid') === p.id);
+    const isHost = p.id === S.hostId;
+    const isMe   = p.id === S.playerId;
+
+    if (existing) {
+      // Sync host badge only (name never changes)
+      let hostBadge = existing.querySelector('.pc-host');
+      if (isHost && !hostBadge) {
+        existing.insertAdjacentHTML('beforeend', '<div class="pc-host">HOST 👑</div>');
+      } else if (!isHost && hostBadge) {
+        hostBadge.remove();
+      }
+    } else {
+      // New player → bounce-in animation
+      const c = avColor(p.name), i = avInit(p.name);
+      const card = document.createElement('div');
+      card.className = 'player-card new-arrival';
+      card.setAttribute('data-pid', p.id);
+      card.innerHTML = `
+        <div class="av" style="background:${c}">${i}</div>
+        <div class="pc-name">${esc(p.name)}</div>
+        ${isHost ? '<div class="pc-host">HOST 👑</div>' : ''}
+        ${isMe   ? '<div class="pc-you">YOU ✨</div>'   : ''}
+      `;
+      grid.appendChild(card);
+      card.addEventListener('animationend', () => card.classList.remove('new-arrival'), { once: true });
+      _renderedPids.add(p.id);
+    }
+  });
 }
 
 // ════════════════════════════════════════════
@@ -195,9 +275,13 @@ document.getElementById('btn-reveal').onclick    = () => revealMission();
 function revealMission() {
   if (S.missionRevealed) return;
   S.missionRevealed = true;
-  document.getElementById('mission-card').classList.add('revealed');
+  const card = document.getElementById('mission-card');
+  card.classList.add('revealed');
   document.getElementById('btn-reveal').classList.add('hidden');
-  setTimeout(() => document.getElementById('btn-complete').classList.remove('hidden'), 420);
+  // Show complete button after flip animation (≈500ms)
+  setTimeout(() => {
+    document.getElementById('btn-complete').classList.remove('hidden');
+  }, 520);
 }
 
 document.getElementById('btn-complete').onclick = () => {
@@ -206,7 +290,7 @@ document.getElementById('btn-complete').onclick = () => {
   socket.emit('completeMission', { code: S.roomCode });
   document.getElementById('btn-complete').classList.add('hidden');
   document.getElementById('submitted-state').classList.remove('hidden');
-  // results will arrive via gameEnded from server
+  // results arrive via gameEnded broadcast from server
 };
 
 function renderMissionView() {
@@ -214,7 +298,12 @@ function renderMissionView() {
   document.getElementById('mission-text').textContent = S.mission;
   S.missionRevealed  = false;
   S.missionCompleted = false;
-  document.getElementById('mission-card').classList.remove('revealed');
+  // Reset card state
+  const card = document.getElementById('mission-card');
+  card.classList.remove('revealed');
+  card.style.animation = 'none';
+  void card.offsetHeight;
+  card.style.animation = '';
   document.getElementById('btn-reveal').classList.remove('hidden');
   document.getElementById('btn-complete').classList.add('hidden');
   document.getElementById('submitted-state').classList.add('hidden');
@@ -226,7 +315,7 @@ function renderAgentStatuses() {
     const c = avColor(p.name), i = avInit(p.name), me = p.id === S.playerId;
     return `<div class="agent-row">
       <div class="av-sm" style="background:${c}">${i}</div>
-      <div class="agent-name">${esc(p.name)}${me ? ' (you)' : ''}</div>
+      <div class="agent-name">${esc(p.name)}${me ? ' <span style="color:var(--blue);font-size:11px">(you)</span>' : ''}</div>
       <div class="pill ${p.missionCompleted ? 'pill-done' : 'pill-active'}">
         ${p.missionCompleted ? '✓ Done' : 'Active'}
       </div>
@@ -239,9 +328,7 @@ function renderAgentStatuses() {
 // ════════════════════════════════════════════
 function renderResults(players, winnerId) {
   const sorted = [...players].sort((a, b) => a.rank - b.rank);
-  const winner = sorted[0];
   const container = document.getElementById('results-dynamic');
-
   if (players.length === 2) {
     container.innerHTML = render2Player(sorted);
   } else {
@@ -255,6 +342,7 @@ function render2Player(sorted) {
   const loser  = sorted[1];
   const wc = avColor(winner.name), wi = avInit(winner.name);
   const lc = avColor(loser.name),  li = avInit(loser.name);
+  const isMe = winner.id === S.playerId;
 
   return `
     <div class="winner-wrap">
@@ -262,19 +350,21 @@ function render2Player(sorted) {
       <div class="w-avatar" style="background:${wc}">${wi}</div>
       <div class="w-name">${esc(winner.name)} Wins!</div>
 
+      ${isMe ? '<div style="color:var(--orange-l);font-size:14px;font-weight:800;margin:-14px 0 14px;animation:fade-in .4s ease .6s both">🎉 That\'s you!</div>' : ''}
+
       <div class="w-mission-box">
         <div class="w-mission-label">THEIR MISSION WAS</div>
         <div class="w-mission-text">${esc(winner.mission)}</div>
         <div class="w-mission-done">✅ Completed!</div>
       </div>
 
-      <div class="vs-divider"><span class="vs-txt">VS</span></div>
+      <div class="vs-divider" style="margin:20px 0 16px"><span class="vs-txt">VS</span></div>
 
       <div class="w-loser">
         <div class="av" style="background:${lc}">${li}</div>
         <div class="w-loser-info">
           <div class="w-loser-name">${esc(loser.name)}</div>
-          <div class="w-loser-mission">${esc(loser.mission)}</div>
+          <div class="w-loser-mission">"${esc(loser.mission)}"</div>
         </div>
         <div class="w-loser-status">❌</div>
       </div>
@@ -286,7 +376,6 @@ function renderPodium(sorted) {
   const p1 = sorted[0];
   const p2 = sorted[1];
   const p3 = sorted[2] || null;
-  const rest = sorted.slice(3);
 
   // Podium order: 2nd · 1st · 3rd
   const slots = p3
@@ -305,6 +394,7 @@ function renderPodium(sorted) {
     return `
       <div class="podium-col">
         <div class="podium-player-wrap">
+          ${isWinner ? '<div style="font-size:22px;margin-bottom:2px;animation:crown-drop .55s cubic-bezier(.34,1.56,.64,1) .2s both">👑</div>' : ''}
           <div class="podium-av ${isWinner ? 'is-winner' : ''}" style="background:${c}">${i}</div>
           <div class="podium-pname ${isWinner ? 'is-winner' : ''}">${esc(player.name)}</div>
         </div>
@@ -317,10 +407,12 @@ function renderPodium(sorted) {
 
   const missionRows = sorted.map((p, idx) => {
     const c = avColor(p.name), i = avInit(p.name), me = p.id === S.playerId;
-    return `<div class="mission-row" style="animation-delay:${idx * .08}s">
+    return `<div class="mission-row" style="animation-delay:${idx * .09}s">
       <div class="mr-av" style="background:${c}">${i}</div>
       <div class="mr-body">
-        <div class="mr-name">${esc(p.name)}${me ? ' <span style="color:var(--blue);font-size:11px">YOU</span>' : ''}
+        <div class="mr-name">
+          ${esc(p.name)}
+          ${me ? '<span style="color:var(--blue);font-size:11px;font-weight:800"> YOU</span>' : ''}
           <span class="mr-rank">#${p.rank}</span>
         </div>
         <div class="mr-mission">${esc(p.mission)}</div>
@@ -347,23 +439,36 @@ function renderPodium(sorted) {
 // ── Confetti burst ──────────────────────────
 function launchConfetti() {
   if (typeof confetti === 'undefined') return;
-  const colors = ['#E27439','#FFD700','#F9F7F3','#78B9D6','#22c55e','#fff'];
+  const colors = ['#E27439','#FFD700','#F9F7F3','#78B9D6','#22c55e','#fff','#9B59B6','#F08A50'];
   const go = opts => confetti({ colors, zIndex: 9999, ...opts });
 
-  go({ particleCount: 90,  spread: 70,  origin: { y: 0.35 } });
+  // Opening burst from center
+  go({ particleCount: 100, spread: 75, origin: { y: 0.35 } });
+
+  // Side cannons
   setTimeout(() => {
-    go({ angle: 55,  spread: 65, particleCount: 55, origin: { x: 0,  y: 0.65 } });
-    go({ angle: 125, spread: 65, particleCount: 55, origin: { x: 1,  y: 0.65 } });
-  }, 320);
+    go({ angle: 55,  spread: 68, particleCount: 65, origin: { x: 0,  y: 0.62 } });
+    go({ angle: 125, spread: 68, particleCount: 65, origin: { x: 1,  y: 0.62 } });
+  }, 300);
+
+  // Shower from top
   setTimeout(() => {
-    go({ particleCount: 130, spread: 150, origin: { y: 0 }, gravity: 1.1, ticks: 420 });
-  }, 720);
+    go({ particleCount: 160, spread: 170, origin: { y: 0 }, gravity: 1.2, ticks: 460 });
+  }, 700);
+
+  // Final sparkle
+  setTimeout(() => {
+    go({ particleCount: 80, spread: 90, origin: { y: 0.42 }, shapes: ['circle', 'square'] });
+  }, 1200);
 }
 
 // Play Again
 document.getElementById('btn-play-again').onclick = () => {
-  Object.assign(S, { playerId: null, playerName: null, roomCode: null, hostId: null,
-    players: [], mission: null, missionRevealed: false, missionCompleted: false });
+  Object.assign(S, {
+    playerId: null, playerName: null, roomCode: null, hostId: null,
+    players: [], mission: null, missionRevealed: false, missionCompleted: false,
+  });
+  _renderedPids.clear();
   ['create-name','join-name','join-code'].forEach(id => {
     document.getElementById(id).value = '';
   });
@@ -375,12 +480,14 @@ document.getElementById('btn-play-again').onclick = () => {
 // ════════════════════════════════════════════
 socket.on('roomCreated', ({ code, playerId, hostId, players }) => {
   Object.assign(S, { playerId, roomCode: code, hostId, players });
+  _renderedPids.clear();
   renderLobby();
   showView('lobby');
 });
 
 socket.on('joinedRoom', ({ code, playerId, hostId, players }) => {
   Object.assign(S, { playerId, roomCode: code, hostId, players });
+  _renderedPids.clear();
   renderLobby();
   showView('lobby');
 });
@@ -393,6 +500,7 @@ socket.on('lobbyUpdate', ({ players, hostId }) => {
 
 socket.on('youAreHost', () => {
   S.hostId = S.playerId;
+  S.isHost = true;
   if (document.getElementById('view-lobby').classList.contains('active')) renderLobby();
   toast('You are now the host 👑');
 });
@@ -419,11 +527,10 @@ socket.on('missionUpdate', ({ players }) => {
 });
 
 socket.on('gameEnded', ({ winnerId, players }) => {
-  // Update local state with full player data (including missions)
   S.players = players;
   renderResults(players, winnerId);
   showView('results');
-  setTimeout(launchConfetti, 450);
+  setTimeout(launchConfetti, 380);
 
   const winner = players.find(p => p.id === winnerId);
   if (winner && winner.id !== S.playerId) {
@@ -431,5 +538,5 @@ socket.on('gameEnded', ({ winnerId, players }) => {
   }
 });
 
-socket.on('disconnect', () => toast('Connection lost…'));
+socket.on('disconnect', () => toast('Connection lost… 📡'));
 socket.on('connect',    () => { if (S.roomCode) toast('Reconnected! 🔄'); });
