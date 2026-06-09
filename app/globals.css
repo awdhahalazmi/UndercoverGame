@@ -2,6 +2,7 @@
    UNDERCOVER — Design System
    ═══════════════════════════════════════════ */
 :root {
+  --font:       var(--font-nunito, 'Nunito', sans-serif);
   --orange:     #E27439;
   --orange-d:   #c85f20;
   --orange-glow:rgba(226,116,57,.35);
@@ -20,7 +21,6 @@
   --shadow:     0 4px 20px rgba(29,42,68,.12);
   --shadow-lg:  0 8px 32px rgba(29,42,68,.18);
   --r-s: 10px; --r-m: 16px; --r-l: 22px; --r-xl: 28px;
-  --font: 'Nunito', sans-serif;
 }
 
 /* ── Reset ── */
@@ -244,7 +244,7 @@ body {
   text-align: center;
   font-size: 28px !important;
   font-weight: 900 !important;
-  padding-left: 28px !important; /* compensate letter-spacing */
+  padding-left: 28px !important;
 }
 
 /* ══════════════════════════════════════════
@@ -259,7 +259,6 @@ body {
   font-size: 14px; font-weight: 700;
   text-align: center;
 }
-.hidden { display: none !important; }
 
 /* ══════════════════════════════════════════
    LOBBY
@@ -281,7 +280,7 @@ body {
   font-family: var(--font);
   font-size: 36px; font-weight: 900;
   letter-spacing: 10px;
-  padding: 14px 24px 14px 34px; /* offset for letter-spacing */
+  padding: 14px 24px 14px 34px;
   border-radius: var(--r-l);
   border: none; cursor: pointer;
   box-shadow: var(--shadow-lg);
@@ -327,7 +326,7 @@ body {
 .pc-you  { font-size: 10px; font-weight: 800; color: var(--blue); }
 
 /* Lobby CTA */
-#lobby-cta { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+#lobby-cta { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
 .waiting-pill {
   display: flex; align-items: center; gap: 10px;
   background: rgba(29,42,68,.06);
@@ -434,7 +433,7 @@ body {
 .fb-text { font-size: 22px; font-weight: 900; color: #fff; line-height: 1.4; }
 
 /* Mission action area */
-.mission-actions { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.mission-actions { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
 
 .submitted-state {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
@@ -637,7 +636,6 @@ body {
   border-radius: 12px 12px 0 0;
   gap: 4px;
 }
-/* Different heights for 1st / 2nd / 3rd */
 .bar-1 { height: 150px; background: linear-gradient(180deg, var(--orange) 0%, var(--orange-d) 100%);
           animation: bar-rise .6s cubic-bezier(.2,1,.3,1) .3s both; }
 .bar-2 { height: 108px; background: linear-gradient(180deg, #8da0b8 0%, #6b7a99 100%);
